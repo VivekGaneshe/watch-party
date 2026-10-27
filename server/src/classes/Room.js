@@ -1,6 +1,10 @@
 
 import { ROLES, isAssignableRole } from "../permissions/roles.js";
 import { Participant } from "./Participant.js";
+import { randomUUID } from "crypto";
+
+
+const MAX_PENDING_PER_USER = 3;
 
 export class Room {
   constructor(roomId, hostUserId) {
@@ -90,6 +94,50 @@ export class Room {
     this.hostUserId = newHostId;
 
     return { oldHost: current, newHost: next };
+  }
+
+    // ---------- Change requests (approval flow) ----------
+
+  addRequest(participant, type, payload = {}) {
+    const pending = [...this.requests.values()].filter(
+      (r) => r.userId === participant.userId
+    ).length;
+    if (pending >= MAX_PENDING_PER_USER) {
+      throw new Error("You have too many pending requests. Wait for the host to respond");
+    }
+
+    const request = {
+      requestId: randomUUID(),
+      userId: participant.userId,
+      username: participant.username,
+      type, // "play" | "pause" | "seek" | "change_video"
+      payload, // { time } or { videoId } or {}
+      createdAt: Date.now(),
+    };
+    this.requests.set(request.requestId, request);
+    return request;
+  }
+
+  // Removes and returns the request (null if it doesn't exist).
+  // Check + remove in one step means two approvers can't both handle it.
+  removeRequest(requestId) {
+    const request = this.requests.get(requestId);
+    if (!request) return null;
+    this.requests.delete(requestId);
+    return request;
+  }
+
+  removeRequestsByUser(userId) {
+    const removed = [];
+    for (const request of this.requests.values()) {
+      if (request.userId === userId) removed.push(request);
+    }
+    removed.forEach((r) => this.requests.delete(r.requestId));
+    return removed;
+  }
+
+  getPendingRequests() {
+    return [...this.requests.values()];
   }
 
   promoteNextHost() {
