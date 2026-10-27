@@ -13,17 +13,49 @@ export class MessageHandler {
 
   // Called once for every new socket connection
   register(socket) {
-    socket.data.roomId = null;
-    socket.data.userId = null;
+  socket.data.roomId = null;
+  socket.data.userId = null;
 
-    socket.on(EVENTS.JOIN_ROOM, (data) => this.run(socket, () => this.onJoinRoom(socket, data)));
-    socket.on(EVENTS.LEAVE_ROOM, () => this.run(socket, () => this.leaveCurrentRoom(socket)));
-    socket.on(EVENTS.PLAY, () => this.run(socket, () => this.onPlay(socket)));
-    socket.on(EVENTS.PAUSE, () => this.run(socket, () => this.onPause(socket)));
-    socket.on(EVENTS.SEEK, (data) => this.run(socket, () => this.onSeek(socket, data)));
-    socket.on(EVENTS.CHANGE_VIDEO, (data) => this.run(socket, () => this.onChangeVideo(socket, data)));
-    socket.on("disconnect", () => this.run(socket, () => this.leaveCurrentRoom(socket)));
-  }
+  socket.on(EVENTS.JOIN_ROOM, (data) =>
+    this.run(socket, () => this.onJoinRoom(socket, data))
+  );
+
+  socket.on(EVENTS.LEAVE_ROOM, () =>
+    this.run(socket, () => this.leaveCurrentRoom(socket))
+  );
+
+  socket.on(EVENTS.PLAY, () =>
+    this.run(socket, () => this.onPlay(socket))
+  );
+
+  socket.on(EVENTS.PAUSE, () =>
+    this.run(socket, () => this.onPause(socket))
+  );
+
+  socket.on(EVENTS.SEEK, (data) =>
+    this.run(socket, () => this.onSeek(socket, data))
+  );
+
+  socket.on(EVENTS.CHANGE_VIDEO, (data) =>
+    this.run(socket, () => this.onChangeVideo(socket, data))
+  );
+
+  socket.on(EVENTS.ASSIGN_ROLE, (data) =>
+    this.run(socket, () => this.onAssignRole(socket, data))
+  );
+
+  socket.on(EVENTS.REMOVE_PARTICIPANT, (data) =>
+    this.run(socket, () => this.onRemoveParticipant(socket, data))
+  );
+
+  socket.on(EVENTS.TRANSFER_HOST, (data) =>
+    this.run(socket, () => this.onTransferHost(socket, data))
+  );
+
+  socket.on("disconnect", () =>
+    this.run(socket, () => this.leaveCurrentRoom(socket))
+  );
+}
 
   // ---------- Helpers ----------
 
@@ -190,6 +222,17 @@ export class MessageHandler {
       return this.sendError(socket, "Invalid YouTube video");
     }
     ctx.room.changeVideo(videoId);
+    socket.on(EVENTS.ASSIGN_ROLE, (data) =>
+  this.run(socket, () => this.onAssignRole(socket, data))
+);
+
+socket.on(EVENTS.REMOVE_PARTICIPANT, (data) =>
+  this.run(socket, () => this.onRemoveParticipant(socket, data))
+);
+
+socket.on(EVENTS.TRANSFER_HOST, (data) =>
+  this.run(socket, () => this.onTransferHost(socket, data))
+);
 
     // Save so the room remembers its last video (fire and forget)
     RoomModel.updateOne({ roomId: ctx.room.roomId }, { lastVideoId: videoId }).catch((e) =>
@@ -197,5 +240,86 @@ export class MessageHandler {
     );
 
     this.broadcastSync(ctx.room, ctx.participant, "change_video");
+  }
+    // ---------- Host-only features ----------
+
+  onAssignRole(socket, data = {}) {
+    const ctx = this.authorize(socket, ACTIONS.ASSIGN_ROLE);
+    if (!ctx) return;
+
+    const targetId = String(data.userId || "");
+    const newRole = String(data.role || "");
+
+    if (targetId === ctx.participant.userId) {
+      return this.sendError(socket, "You cannot change your own role");
+    }
+
+    let target;
+    try {
+      // Room validates: target exists, is not host, role is assignable
+      target = ctx.room.assignRole(targetId, newRole);
+    } catch (err) {
+      return this.sendError(socket, err.message);
+    }
+
+    this.io.to(ctx.room.roomId).emit(EVENTS.ROLE_ASSIGNED, {
+      userId: target.userId,
+      username: target.username,
+      role: target.role,
+      participants: ctx.room.getParticipantsList(),
+    });
+  }
+
+  onRemoveParticipant(socket, data = {}) {
+    const ctx = this.authorize(socket, ACTIONS.REMOVE_PARTICIPANT);
+    if (!ctx) return;
+
+    const targetId = String(data.userId || "");
+
+    if (targetId === ctx.participant.userId) {
+      return this.sendError(socket, "You cannot remove yourself. Transfer host and leave instead");
+    }
+
+    const removed = ctx.room.removeParticipant(targetId);
+    if (!removed) return this.sendError(socket, "Participant not found");
+
+    // Find the removed user's socket, tell them, and kick them from the room
+    const targetSocket = this.io.sockets.sockets.get(removed.socketId);
+    if (targetSocket) {
+      targetSocket.emit(EVENTS.REMOVED, { message: "You were removed from the room by the host" });
+      targetSocket.leave(ctx.room.roomId);
+      // Clear their state so a later "disconnect" does nothing
+      targetSocket.data.roomId = null;
+      targetSocket.data.userId = null;
+    }
+
+    // Everyone still in the room updates their list
+    this.io.to(ctx.room.roomId).emit(EVENTS.PARTICIPANT_REMOVED, {
+      userId: removed.userId,
+      username: removed.username,
+      participants: ctx.room.getParticipantsList(),
+    });
+  }
+
+  onTransferHost(socket, data = {}) {
+    const ctx = this.authorize(socket, ACTIONS.TRANSFER_HOST);
+    if (!ctx) return;
+
+    const targetId = String(data.userId || "");
+
+    let result;
+    try {
+      result = ctx.room.transferHost(ctx.participant.userId, targetId);
+    } catch (err) {
+      return this.sendError(socket, err.message);
+    }
+
+    this.io.to(ctx.room.roomId).emit(EVENTS.HOST_TRANSFERRED, {
+      oldHostId: result.oldHost.userId,
+      newHostId: result.newHost.userId,
+      newHostName: result.newHost.username,
+      hostUserId: ctx.room.hostUserId,
+      participants: ctx.room.getParticipantsList(),
+    });
   }
 }
