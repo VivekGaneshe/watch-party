@@ -4,11 +4,13 @@ import cors from "cors";
 import { env } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import { initSocket } from "./socket/index.js";
+import roomRoutes from "./routes/room.routes.js";
 
 const app = express();
 
 app.use(cors({ origin: env.CLIENT_URL }));
 app.use(express.json());
+app.use("/api/rooms", roomRoutes);
 
 // Health check (also useful for Render)
 app.get("/health", (req, res) => {
