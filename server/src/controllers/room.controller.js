@@ -5,6 +5,7 @@ import { generateRoomCode } from "../utils/generateRoomCode.js";
 
 // POST /api/rooms
 export async function createRoom(req, res) {
+  console.log("createRoom called");
   try {
     for (let i = 0; i < 5; i++) {
       const roomId = generateRoomCode();
@@ -12,19 +13,15 @@ export async function createRoom(req, res) {
 
       if (!exists) {
         await RoomModel.create({ roomId });
+        console.log("SAVED room:", roomId);
         return res.status(201).json({ roomId });
       }
     }
 
-    return res.status(500).json({
-      message: "Could not generate a unique room code",
-    });
+    return res.status(500).json({ message: "Could not generate a unique room code" });
   } catch (err) {
     console.error("Create room error:", err.message);
-
-    return res.status(500).json({
-      message: "Server error",
-    });
+    return res.status(500).json({ message: "Server error" });
   }
 }
 

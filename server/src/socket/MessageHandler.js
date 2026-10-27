@@ -180,71 +180,69 @@ export class MessageHandler {
   // ---------- Join / Leave ----------
 
   async onJoinRoom(socket, data = {}) {
-    const roomId = String(data.roomId || "").trim().toUpperCase();
-    const username = String(data.username || "").trim().slice(0, 20);
+  console.log("join_room received:", data);
 
-    if (!roomId || !username) {
-      return this.sendError(socket, "Room code and username are required");
-    }
+  const roomId = String(data.roomId || "").trim().toUpperCase();
+  const username = String(data.username || "").trim().slice(0, 20);
 
-    if (socket.data.roomId) {
-      this.leaveCurrentRoom(socket);
-    }
-
-    let room = roomManager.getRoom(roomId);
-
-    if (!room) {
-      const saved = await RoomModel.findOne({ roomId }).lean();
-
-      if (!saved) {
-        return this.sendError(socket, "Room not found");
-      }
-
-      room = roomManager.getRoom(roomId);
-
-      if (!room) {
-        room = roomManager.createRoom(roomId, null);
-
-        if (saved.lastVideoId) {
-          room.videoState.videoId = saved.lastVideoId;
-        }
-      }
-    }
-
-    const userId = randomUUID();
-
-    if (!room.hostUserId) {
-      room.hostUserId = userId;
-    }
-
-    const participant = room.addParticipant({
-      userId,
-      username,
-      socketId: socket.id,
-    });
-
-    socket.join(roomId);
-    socket.data.roomId = roomId;
-    socket.data.userId = userId;
-
-    socket.emit(EVENTS.ROOM_JOINED, {
-      roomId,
-      you: participant.toJSON(),
-      hostUserId: room.hostUserId,
-      participants: room.getParticipantsList(),
-      videoState: room.getSyncState(),
-    });
-
-    socket.to(roomId).emit(EVENTS.USER_JOINED, {
-      userId,
-      username,
-      role: participant.role,
-      participants: room.getParticipantsList(),
-    });
-
-    // A Host/Moderator receives any existing pending requests
-    this.sendPendingRequests(room, participant);
+  if (!roomId || !username) {
+    return this.sendError(socket, "Room code and username are required");
   }
+
+  if (socket.data.roomId) {
+    this.leaveCurrentRoom(socket);
+  }
+
+  let room = roomManager.getRoom(roomId);
+
+  if (!room) {
+    const saved = await RoomModel.findOne({ roomId }).lean();
+    console.log("LOOKUP room:", JSON.stringify(roomId), "found:", Boolean(saved));
+
+    if (!saved) {
+      return this.sendError(socket, "Room not found");
+    }
+
+    // Check again: another user may have created it while we awaited the DB
+    room = roomManager.getRoom(roomId);
+    if (!room) {
+      room = roomManager.createRoom(roomId, null);
+      if (saved.lastVideoId) {
+        room.videoState.videoId = saved.lastVideoId;
+      }
+    }
+  }
+
+  const userId = randomUUID();
+
+  if (!room.hostUserId) {
+    room.hostUserId = userId;
+  }
+
+  const participant = room.addParticipant({ userId, username, socketId: socket.id });
+  console.log("JOINED:", username, "as", participant.role);
+
+  socket.join(roomId);
+  socket.data.roomId = roomId;
+  socket.data.userId = userId;
+
+  socket.emit(EVENTS.ROOM_JOINED, {
+    roomId,
+    you: participant.toJSON(),
+    hostUserId: room.hostUserId,
+    participants: room.getParticipantsList(),
+    videoState: room.getSyncState(),
+  });
+
+  socket.to(roomId).emit(EVENTS.USER_JOINED, {
+    userId,
+    username,
+    role: participant.role,
+    participants: room.getParticipantsList(),
+  });
+
+  this.sendPendingRequests(room, participant);
+}
 
   leaveCurrentRoom(socket) {
     const { roomId, userId } = socket.data;
