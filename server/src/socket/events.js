@@ -9,11 +9,11 @@ export const EVENTS = Object.freeze({
   ASSIGN_ROLE: "assign_role",
   REMOVE_PARTICIPANT: "remove_participant",
   TRANSFER_HOST: "transfer_host",
-
-  // Change request events: Client -> Server
   REQUEST_CHANGE: "request_change",
   APPROVE_REQUEST: "approve_request",
   REJECT_REQUEST: "reject_request",
+  CHAT_MESSAGE: "chat_message",
+  SEND_REACTION: "send_reaction",
 
   // Server -> Client
   ROOM_JOINED: "room_joined",
@@ -24,12 +24,11 @@ export const EVENTS = Object.freeze({
   PARTICIPANT_REMOVED: "participant_removed",
   REMOVED: "removed",
   HOST_TRANSFERRED: "host_transferred",
-
-  // Approval flow events: Server -> Client
   REQUEST_SENT: "request_sent",
   REQUEST_CREATED: "request_created",
   REQUEST_RESOLVED: "request_resolved",
   PENDING_REQUESTS: "pending_requests",
-
+  NEW_MESSAGE: "new_message",
+  REACTION: "reaction",
   ERROR: "error_message",
 });

@@ -1,4 +1,3 @@
-
 import { randomUUID } from "crypto";
 import { EVENTS } from "./events.js";
 import { roomManager } from "../classes/RoomManager.js";
@@ -6,6 +5,8 @@ import { can, ACTIONS, ROLES } from "../permissions/roles.js";
 import { RoomModel } from "../models/Room.model.js";
 
 const VIDEO_ID_REGEX = /^[\w-]{11}$/;
+const MAX_MESSAGE_LENGTH = 300;
+const ALLOWED_REACTIONS = ["👍", "😂", "😮", "👏", "🔥", "🎉"];
 
 export class MessageHandler {
   constructor(io) {
@@ -67,6 +68,9 @@ export class MessageHandler {
       this.run(socket, () => this.onRejectRequest(socket, data))
     );
 
+    socket.on(EVENTS.CHAT_MESSAGE, (data) => this.run(socket, () => this.onChatMessage(socket, data)));
+    socket.on(EVENTS.SEND_REACTION, (data) => this.run(socket, () => this.onReaction(socket, data)));
+
     socket.on("disconnect", () =>
       this.run(socket, () => this.leaveCurrentRoom(socket))
     );
@@ -85,6 +89,20 @@ export class MessageHandler {
 
   sendError(socket, message) {
     socket.emit(EVENTS.ERROR, { message });
+  }
+
+  // Sliding window: allow at most `max` events per `windowMs` for this socket
+  isRateLimited(socket, key, max, windowMs) {
+    const now = Date.now();
+    socket.data.rate ??= {};
+    const recent = (socket.data.rate[key] || []).filter((t) => now - t < windowMs);
+    if (recent.length >= max) {
+      socket.data.rate[key] = recent;
+      return true;
+    }
+    recent.push(now);
+    socket.data.rate[key] = recent;
+    return false;
   }
 
   authorize(socket, action) {
@@ -232,6 +250,7 @@ export class MessageHandler {
     hostUserId: room.hostUserId,
     participants: room.getParticipantsList(),
     videoState: room.getSyncState(),
+    messages: room.getMessages(),
   });
 
   socket.to(roomId).emit(EVENTS.USER_JOINED, {
@@ -545,6 +564,34 @@ export class MessageHandler {
       type: request.type,
       username: request.username,
       by: ctx.participant.username,
+    });
+  }
+
+  // ---------- Chat and reactions ----------
+  onChatMessage(socket, data = {}) {
+    const ctx = this.authorize(socket, ACTIONS.CHAT);
+    if (!ctx) return;
+    if (this.isRateLimited(socket, "chat", 5, 5000)) {
+      return this.sendError(socket, "You are sending messages too fast");
+    }
+    const text = String(data.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
+    if (!text) return; // ignore empty messages silently
+    const message = ctx.room.addMessage(ctx.participant, text);
+    this.io.to(ctx.room.roomId).emit(EVENTS.NEW_MESSAGE, message);
+  }
+  onReaction(socket, data = {}) {
+    const ctx = this.authorize(socket, ACTIONS.CHAT);
+    if (!ctx) return;
+    const emoji = String(data.emoji || "");
+    if (!ALLOWED_REACTIONS.includes(emoji)) {
+      return this.sendError(socket, "Invalid reaction");
+    }
+    // Reactions are small and frequent, so a limited burst is allowed and extras are dropped quietly
+    if (this.isRateLimited(socket, "reaction", 8, 5000)) return;
+    this.io.to(ctx.room.roomId).emit(EVENTS.REACTION, {
+      id: randomUUID(),
+      emoji,
+      username: ctx.participant.username,
     });
   }
 }
