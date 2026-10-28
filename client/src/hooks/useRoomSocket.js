@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { socket } from "../socket/socket";
 import { EVENTS } from "../socket/events";
 
-// Every event the server can send us
 const SERVER_EVENTS = [
   EVENTS.ROOM_JOINED,
   EVENTS.SYNC_STATE,
@@ -22,20 +21,43 @@ const SERVER_EVENTS = [
 export function useRoomSocket(dispatch) {
   // { roomId, username } of the room we want to be in (used to re-join after reconnect)
   const creds = useRef(null);
+  // true between "we asked to join" and "server confirmed"
+  const joining = useRef(false);
 
-  // ---------- Listen to the server ----------
   useEffect(() => {
+    const failJoin = (text) => {
+      joining.current = false;
+      creds.current = null;
+      socket.disconnect();
+      dispatch({ type: "JOIN_FAILED", payload: text });
+    };
+
     const onConnect = () => {
       dispatch({ type: "CONNECTION", payload: true });
-      // First connect OR reconnect: (re)join the room
-      if (creds.current) socket.emit(EVENTS.JOIN_ROOM, creds.current);
+      if (creds.current) {
+        joining.current = true;
+        socket.emit(EVENTS.JOIN_ROOM, creds.current);
+      }
     };
     const onDisconnect = () => dispatch({ type: "CONNECTION", payload: false });
-    const onConnectError = () =>
-      dispatch({ type: "NOTICE", payload: { kind: "error", text: "Cannot reach the server" } });
+
+    const onConnectError = () => {
+      if (joining.current) failJoin("Cannot reach the server");
+      else dispatch({ type: "NOTICE", payload: { kind: "error", text: "Cannot reach the server" } });
+    };
+
+    const onRoomJoined = () => {
+      joining.current = false;
+    };
+
+    // An error while joining (e.g. "Room not found") means the join failed
+    const onError = (payload) => {
+      if (joining.current) failJoin(payload?.message || "Could not join the room");
+    };
 
     // Kicked by the host: stop auto re-joining
     const onRemoved = () => {
+      joining.current = false;
       creds.current = null;
       socket.disconnect();
     };
@@ -43,9 +65,10 @@ export function useRoomSocket(dispatch) {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
+    socket.on(EVENTS.ROOM_JOINED, onRoomJoined);
+    socket.on(EVENTS.ERROR, onError);
     socket.on(EVENTS.REMOVED, onRemoved);
 
-    // One generic listener per server event -> reducer
     const handlers = SERVER_EVENTS.map((event) => {
       const handler = (payload) => dispatch({ type: event, payload });
       socket.on(event, handler);
@@ -56,12 +79,13 @@ export function useRoomSocket(dispatch) {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
+      socket.off(EVENTS.ROOM_JOINED, onRoomJoined);
+      socket.off(EVENTS.ERROR, onError);
       socket.off(EVENTS.REMOVED, onRemoved);
       handlers.forEach(([event, handler]) => socket.off(event, handler));
     };
   }, [dispatch]);
 
-  // ---------- Actions the UI can call ----------
   return useMemo(() => {
     const emit = (event, data) => socket.emit(event, data);
 
@@ -77,6 +101,7 @@ export function useRoomSocket(dispatch) {
           return;
         }
         creds.current = next;
+        joining.current = true;
         dispatch({ type: "JOINING" });
         if (socket.connected) socket.emit(EVENTS.JOIN_ROOM, next);
         else socket.connect(); // the "connect" listener sends join_room
@@ -84,8 +109,16 @@ export function useRoomSocket(dispatch) {
 
       leaveRoom() {
         socket.emit(EVENTS.LEAVE_ROOM);
+        joining.current = false;
         creds.current = null;
         socket.disconnect();
+        dispatch({ type: "RESET" });
+      },
+
+      // Clear local state without talking to the server (used after being removed)
+      reset() {
+        joining.current = false;
+        creds.current = null;
         dispatch({ type: "RESET" });
       },
 

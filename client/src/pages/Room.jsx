@@ -1,32 +1,65 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useRoom } from "../context/RoomContext";
+import JoinGate from "../components/JoinGate";
 
 export default function Room() {
+  const { roomId } = useParams();
   const room = useRoom();
   const navigate = useNavigate();
+  const code = String(roomId || "").toUpperCase();
 
-  // Opened /room/CODE directly (no name yet) or got removed -> back home
-  useEffect(() => {
-    if (room.status === "idle" || room.status === "removed") navigate("/");
-  }, [room.status, navigate]);
+  // Kicked by the host
+  if (room.status === "removed") {
+    return (
+      <div className="page">
+        <div className="card">
+          <h1 className="title">Removed from room</h1>
+          <p className="muted">The host removed you from this room.</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              room.reset();
+              navigate("/");
+            }}
+          >
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
+  // Opened a room link directly (or refreshed): ask for a name first
+  if (room.status === "idle") return <JoinGate roomId={code} />;
+
+  if (room.status === "joining") {
+    return (
+      <div className="page">
+        <p className="muted">Joining room {code}...</p>
+      </div>
+    );
+  }
+
+  // ---- status === "joined": temporary test UI (Step 10 replaces this) ----
   return (
     <div style={{ padding: 24 }}>
       <h2>Room {room.roomId} (temporary page)</h2>
-      <p>Status: {room.status} | Connected: {String(room.connected)} | My role: {room.role}</p>
-
-      {room.notice && (
-        <p style={{ color: room.notice.kind === "error" ? "tomato" : "lightgreen" }}>
-          {room.notice.text}
-        </p>
-      )}
+      <p>
+        Connected: {String(room.connected)} | My role: <b>{room.role}</b>
+      </p>
 
       <button onClick={room.play}>Play</button>
       <button onClick={room.pause}>Pause</button>
       <button onClick={() => room.seek(30)}>Seek 30s</button>
       <button onClick={() => room.requestChange("play")}>Request play</button>
-      <button onClick={() => { room.leaveRoom(); navigate("/"); }}>Leave</button>
+      <button
+        onClick={() => {
+          room.leaveRoom();
+          navigate("/");
+        }}
+      >
+        Leave
+      </button>
 
       <h3>Pending requests (for Host/Mod)</h3>
       {room.requests.map((r) => (
