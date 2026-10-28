@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState  ,useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import { createRoom, checkRoom } from "../api/roomApi";
 import { useRoom } from "../context/RoomContext";
 import { parseRoomCode } from "../utils/roomCode";
 import { getSavedName, saveName } from "../utils/storage";
-import { useEffect, useState } from "react";
-import { createRoom, checkRoom, wakeServer } from "../api/roomApi";
+
+import {  wakeServer } from "../api/roomApi";
 
 export default function Home() {
   const navigate = useNavigate();
