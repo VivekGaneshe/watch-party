@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRoom } from "../context/RoomContext";
 import { useYouTubePlayer } from "../hooks/useYouTubePlayer";
 import VideoControls from "./VideoControls";
+import ReactionLayer from "./ReactionLayer";
 
 const DRIFT_PLAYING = 1; // seconds of difference we tolerate while playing
 const DRIFT_PAUSED = 0.4;
@@ -127,6 +128,7 @@ export default function VideoPlayer() {
 
         {/* Transparent shield: nobody can click YouTube's own controls */}
         <div className="player-shield" />
+        <ReactionLayer />
 
         {!ready && (
           <div className="player-overlay">

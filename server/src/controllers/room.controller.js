@@ -5,7 +5,6 @@ import { generateRoomCode } from "../utils/generateRoomCode.js";
 
 // POST /api/rooms
 export async function createRoom(req, res) {
-  console.log("createRoom called");
   try {
     for (let i = 0; i < 5; i++) {
       const roomId = generateRoomCode();

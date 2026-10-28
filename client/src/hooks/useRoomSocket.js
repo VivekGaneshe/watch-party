@@ -10,11 +10,16 @@ const SERVER_EVENTS = [
   EVENTS.ROLE_ASSIGNED,
   EVENTS.PARTICIPANT_REMOVED,
   EVENTS.REMOVED,
+  EVENTS.NEW_MESSAGE,
+  EVENTS.REACTION,
   EVENTS.HOST_TRANSFERRED,
   EVENTS.REQUEST_SENT,
   EVENTS.REQUEST_CREATED,
   EVENTS.REQUEST_RESOLVED,
   EVENTS.PENDING_REQUESTS,
+  // Added chat and reactions entries before EVENTS.ERROR
+  EVENTS.CHAT_MESSAGE,
+  EVENTS.SEND_REACTION,
   EVENTS.ERROR,
 ];
 
@@ -137,6 +142,11 @@ export function useRoomSocket(dispatch) {
 
       // Participant: ask for a change, e.g. requestChange("seek", { time: 30 })
       requestChange: (type, extra = {}) => emit(EVENTS.REQUEST_CHANGE, { type, ...extra }),
+
+      // Chat and reactions (everyone)
+      sendMessage: (text) => emit(EVENTS.CHAT_MESSAGE, { text }),
+      sendReaction: (emoji) => emit(EVENTS.SEND_REACTION, { emoji }),
+      removeReaction: (id) => dispatch({ type: "REMOVE_REACTION", payload: id }),
     };
   }, [dispatch]);
 }

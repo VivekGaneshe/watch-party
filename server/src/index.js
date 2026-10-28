@@ -8,7 +8,8 @@ import roomRoutes from "./routes/room.routes.js";
 
 const app = express();
 
-app.use(cors({ origin: env.CLIENT_URL }));
+app.use(cors({ origin: env.CLIENT_URLS }));
+
 app.use(express.json());
 app.use("/api/rooms", roomRoutes);
 

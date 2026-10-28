@@ -4,6 +4,8 @@ import { createRoom, checkRoom } from "../api/roomApi";
 import { useRoom } from "../context/RoomContext";
 import { parseRoomCode } from "../utils/roomCode";
 import { getSavedName, saveName } from "../utils/storage";
+import { useEffect, useState } from "react";
+import { createRoom, checkRoom, wakeServer } from "../api/roomApi";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -14,12 +16,17 @@ export default function Home() {
   const [busy, setBusy] = useState(null); // null | "create" | "join"
   const [error, setError] = useState("");
 
+   useEffect(() => {
+    wakeServer();
+  }, []);
+
   function getName() {
     const name = username.trim();
     if (name.length < 2) {
       setError("Enter a name (at least 2 characters)");
       return null;
     }
+    
     return name;
   }
 

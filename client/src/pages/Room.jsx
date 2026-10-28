@@ -7,6 +7,8 @@ import ParticipantList from "../components/ParticipantList";
 import RequestPanel from "../components/RequestPanel";
 import RoleBadge from "../components/RoleBadge";
 import InviteButton from "../components/InviteButton";
+import ReactionBar from "../components/ReactionBar";
+import Chat from "../components/Chat";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -74,12 +76,14 @@ export default function Room() {
       <main className="room-body">
         <div className="room-main">
           <VideoPlayer />
+          <ReactionBar />
           <ChangeVideoForm />
         </div>
 
         <aside className="room-side">
           <ParticipantList />
           <RequestPanel />
+          <Chat />
         </aside>
       </main>
     </div>

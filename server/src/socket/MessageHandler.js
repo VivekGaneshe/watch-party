@@ -198,7 +198,7 @@ export class MessageHandler {
   // ---------- Join / Leave ----------
 
   async onJoinRoom(socket, data = {}) {
-  console.log("join_room received:", data);
+
 
   const roomId = String(data.roomId || "").trim().toUpperCase();
   const username = String(data.username || "").trim().slice(0, 20);
@@ -215,8 +215,7 @@ export class MessageHandler {
 
   if (!room) {
     const saved = await RoomModel.findOne({ roomId }).lean();
-    console.log("LOOKUP room:", JSON.stringify(roomId), "found:", Boolean(saved));
-
+  
     if (!saved) {
       return this.sendError(socket, "Room not found");
     }
@@ -238,8 +237,7 @@ export class MessageHandler {
   }
 
   const participant = room.addParticipant({ userId, username, socketId: socket.id });
-  console.log("JOINED:", username, "as", participant.role);
-
+ 
   socket.join(roomId);
   socket.data.roomId = roomId;
   socket.data.userId = userId;

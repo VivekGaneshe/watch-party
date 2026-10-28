@@ -14,6 +14,8 @@ const initialState = {
   lastSync: null, // { action, by } of the latest sync_state
   requests: [], // pending requests (only filled for Host/Moderator)
   myRequests: [], // my own requests waiting for approval
+  messages: [], // chat history
+  reactions: [], // floating emojis currently on screen
   notice: null, // { id, kind, text } for toasts
 };
 
@@ -49,6 +51,8 @@ function reducer(state, { type, payload }) {
         lastSync: null,
         requests: [],
         myRequests: [],
+        messages: payload.messages || [],
+        reactions: [],
       };
 
     case EVENTS.SYNC_STATE:
@@ -126,6 +130,15 @@ function reducer(state, { type, payload }) {
       }
       return next;
     }
+
+    case EVENTS.NEW_MESSAGE:
+      return { ...state, messages: [...state.messages, payload].slice(-100) };
+
+    case EVENTS.REACTION:
+      return { ...state, reactions: [...state.reactions, payload].slice(-30) };
+
+    case "REMOVE_REACTION":
+      return { ...state, reactions: state.reactions.filter((r) => r.id !== payload) };
 
     case EVENTS.ERROR:
       return { ...state, notice: notice("error", payload.message) };
