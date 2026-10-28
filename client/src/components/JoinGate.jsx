@@ -7,7 +7,7 @@ import { getSavedName, saveName } from "../utils/storage";
 export default function JoinGate({ roomId }) {
   const navigate = useNavigate();
   const { joinRoom, status } = useRoom();
-  const [username, setUsername] = useState(getSavedName);
+  const [username, setUsername] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
 
