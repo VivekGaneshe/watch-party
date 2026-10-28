@@ -40,10 +40,11 @@ export default function Home() {
       saveName(name);
       room.joinRoom(roomId, name);
       navigate(`/room/${roomId}`);
-    } catch {
-      setError("Could not create the room. Is the server running?");
-      setBusy(null);
-    }
+    } catch (err) {
+  console.error("CREATE ERROR:", err);
+  setError("Could not create the room. Is the server running?");
+  setBusy(null);
+}
   }
 
   async function handleJoin(e) {
