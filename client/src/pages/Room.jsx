@@ -1,6 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useRoom } from "../context/RoomContext";
 import JoinGate from "../components/JoinGate";
+import VideoPlayer from "../components/VideoPlayer";
+import ChangeVideoForm from "../components/ChangeVideoForm";
+import ParticipantList from "../components/ParticipantList";
+import RequestPanel from "../components/RequestPanel";
+import RoleBadge from "../components/RoleBadge";
+import InviteButton from "../components/InviteButton";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -29,8 +35,10 @@ export default function Room() {
     );
   }
 
-  // Opened a room link directly (or refreshed): ask for a name first
-  if (room.status === "idle") return <JoinGate roomId={code} />;
+  // Opened a room link directly (or refreshed), or the link is for a different room
+  if (room.status === "idle" || (room.status === "joined" && room.roomId !== code)) {
+    return <JoinGate roomId={code} />;
+  }
 
   if (room.status === "joining") {
     return (
@@ -40,44 +48,40 @@ export default function Room() {
     );
   }
 
-  // ---- status === "joined": temporary test UI (Step 10 replaces this) ----
+  function handleLeave() {
+    room.leaveRoom();
+    navigate("/");
+  }
+
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Room {room.roomId} (temporary page)</h2>
-      <p>
-        Connected: {String(room.connected)} | My role: <b>{room.role}</b>
-      </p>
-
-      <button onClick={room.play}>Play</button>
-      <button onClick={room.pause}>Pause</button>
-      <button onClick={() => room.seek(30)}>Seek 30s</button>
-      <button onClick={() => room.requestChange("play")}>Request play</button>
-      <button
-        onClick={() => {
-          room.leaveRoom();
-          navigate("/");
-        }}
-      >
-        Leave
-      </button>
-
-      <h3>Pending requests (for Host/Mod)</h3>
-      {room.requests.map((r) => (
-        <div key={r.requestId}>
-          {r.username} wants to {r.type}
-          <button onClick={() => room.approveRequest(r.requestId)}>Approve</button>
-          <button onClick={() => room.rejectRequest(r.requestId)}>Reject</button>
+    <div className="room">
+      <header className="room-header">
+        <div className="room-title">
+          <h1>Watch Party</h1>
+          <span className="code">{room.roomId}</span>
+          <RoleBadge role={room.role} />
         </div>
-      ))}
+        <div className="row">
+          <InviteButton roomId={room.roomId} />
+          <button className="btn btn-small btn-ghost" onClick={handleLeave}>
+            Leave
+          </button>
+        </div>
+      </header>
 
-      <h3>State</h3>
-      <pre>
-        {JSON.stringify(
-          { participants: room.participants, videoState: room.videoState, lastSync: room.lastSync },
-          null,
-          2
-        )}
-      </pre>
+      {!room.connected && <div className="reconnect">Connection lost. Reconnecting...</div>}
+
+      <main className="room-body">
+        <div className="room-main">
+          <VideoPlayer />
+          <ChangeVideoForm />
+        </div>
+
+        <aside className="room-side">
+          <ParticipantList />
+          <RequestPanel />
+        </aside>
+      </main>
     </div>
   );
 }

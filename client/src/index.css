@@ -195,3 +195,230 @@ input {
 .toast-success {
   border-color: var(--success);
 }
+/* ---------- Room layout ---------- */
+.room {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.room-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.room-title h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.reconnect {
+  background: #3a2a10;
+  border: 1px solid #b7791f;
+  color: #f6c667;
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.room-body {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+.room-main,
+.room-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .room-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Player ---------- */
+.player-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.player-host {
+  position: absolute;
+  inset: 0;
+}
+
+.player-host iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.player-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.player-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  text-align: center;
+  padding: 16px;
+}
+
+/* ---------- Controls ---------- */
+.controls {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.seek {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-width: 38px;
+  text-align: center;
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.plist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pitem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pitem:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.pinfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- Role badges ---------- */
+.badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.badge-host {
+  background: #3b2d10;
+  border-color: #e0a526;
+  color: #f6c667;
+}
+
+.badge-moderator {
+  background: #1f2a4a;
+  border-color: var(--accent);
+  color: #b9a8ff;
+}
+
+.badge-participant {
+  background: #1d1d28;
+  color: var(--muted);
+}
